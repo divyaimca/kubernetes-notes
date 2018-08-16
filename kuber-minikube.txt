@@ -1,0 +1,706 @@
+Kubernaties
+===========
+
+Opensoure orchestatation system for docker containers
+Helps to schedule containers on a cluster machines
+Run multiple containers on one machine
+can run long running services in 
+Manage state of the containers
+- start container in specific nodes
+- restart containers when it gets killed
+- move containers from one node to another node
+
+
+Docker orchestration products:
+ - docker swarm
+ - docker compose
+ - Mesos
+ - Kubernetes
+
+ Kubernets can run on :
+ - on premises
+ - public cloud
+ - Hybrid
+
+ Backed by google, opensource and highly modular
+
+ Docker is most popular, alternate is rocket - rkt
+ Docker engine
+ Docker hub
+
+ COntainer benefit:
+ Isolation 
+ ship faster
+ parity between Dev, QA, Prod
+ Contain LXC(a kernel feature) for system level isolation
+
+ Kubernetes Setup:
+ - Can run anywhere
+ - more integrations with public cloud providers aws,GCE, Azure
+ - Volume and ELB are supported with supported cloud providers
+
+ MINICUBE : Spin up a single local machine with Kubernetes clusters easily
+ -  Runs a single node kebernetes cluster inside a linux vm
+ -  For testing before development
+ -  Cant spin prod cluster, as its a single node machine with no HA
+
+
+  Goto https://github.com/kubernetes/minikube
+  
+  - Install instructions
+  - minikube start
+  - Check config in ~/.kube
+
+  - If kubectl is configured then download it manually and with +x mv to /usr/local/bin
+
+  Now use kubectl command
+
+  Example :
+   - kubectl run hello-minikube --image=gcr.io/google_containers/echoserver:1.4 --port=8080
+   - kubectl expose deployment hello-minikube --type=NodePort
+   - minikube service hello-minikube --url. (Access URL and try to put url changes) e.g. (http://192.168.99.100:30988/test123111)
+   - minikube stop
+
+
+
+
+ 
+
+
+
+
+build image
+docker login
+docker tag imageid priyadku/imagename
+docker push priyadku/image
+
+or tag during build
+
+
+  POD:
+  =====
+
+  To launch a container based on image, we need to create a pod definition.
+
+  A pod describes an application running on Kubernetes
+  Pod can contain one or more tightly coupled container that make the app
+  apps can easily communicate each other using their local port numbers
+
+  we will run one nodejs app.
+
+
+  pod-helloworld.yml
+  ==================
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nodejsapp.example.com
+  labels:
+    app: helloworld
+spec:
+  containers:
+  - name: nodejsapp
+    image: priyadku/nodejsapp
+    ports:
+    - name: nodejs-port
+      containerPort: 3000
+
+
+
+ Demo :
+ ======
+
+
+ minikube start
+ kubectl get node
+
+
+ helloworld.yml (above)
+
+ kubectl create -f helloworld.yml - will create the pod
+
+ kubectl get pod - will list pods
+
+
+ kubectl describe pod nodehelloworld.example.com
+
+ kubectl port-forward nodehelloworld.example.com 8081:3000 (Access App 1st way)
+
+ 2nd way of acceesing app(by exposing port and creating a service)
+
+ Expose port :
+
+ kubectl expose pod nodehelloworld.example.com --type=NodePort --name nodehelloworld-service 
+
+ minikube service nodehelloworld-service --url
+
+ commands :
+
+ kubectl attach  nodehelloworld.example.com
+
+ kubectl exec  nodehelloworld.example.com -- ls /app
+
+
+
+ kubectl exec nodejsapp.example.com -- touch /app/1.txt
+ kubectl exec nodejsapp.example.com -- ls /app  
+
+
+ kubectl get service
+
+ kubectl describe service service-
+
+
+ kubectl run -i --tty busybox --image=busybox 
+========================================================================================================================================================
+
+KOPS (Kubernetes Operation): Used on AWS for spinning up HA prod cluster
+  - Allows for production grade Kubernetes installation, upgrades, management	
+  - Legacy tool - kube-up.sh (Is now deprecated)
+  - Kops work on only Linux/MAC
+  - Use Vagrant with VBox(with windows to sinup a linux vm)
+
+  Setup : 
+   mkdir ubuntu
+   cd ubuntu
+   vagrant init ubuntu/xenial64
+   vagrant up
+   vagrant ssh-config
+   vagrant ssh
+   wget https://github.com/kubernetes/kops/releases/download/1.7.0/kops-darwin-amd64
+   chmod +x kops-darwin-amd64 
+   sudo mv kops-darwin-amd64 /usr/local/bin
+   sudo apt-get install python-pip (allows to install aws cli)
+   sudo pip install awscli
+
+   Open a free tier aws account
+   
+  - https://codeload.github.com/kumarprd/docker-supervisor/zip/master
+
+
+  - create a user -> download secret key and id -> aws configure -> give administrator access to the user
+  - create s3 bucket (s3 bucket to manage state of the kops) -> mention the region (get from cloudping.info)
+  - Setup dns with route 53 to create a domain and subdomain for cops 
+    kops expect to enter a subdomain to be managed from dns zone , so create dns zone
+
+
+    Now install kubectl in ubuntu
+    check kubectl and kops both are working
+
+    create ssh key pair
+
+    ssh-keygen -t rsa
+
+    check the pub key, whcih will be uploaded to ec2 instance for login
+
+    kops create cluster --name=pkthegnulinuxguy.com --state=s3://kops-state-pk-123 --zones=ap-south-1 --node-count=2 --node-size=t2.micro --master-size=t2.micro --dns-zone=pkthegnulinuxguy.com  (will preview the changes made)
+
+    kops edit cluster pkthegnulinuxguy.com  --state=s3://kops-state-pk-123  (modify the cluster)
+
+    after modification : (update the modification)
+
+    kops update cluster pkthegnulinuxguy.com --yes --state=s3://kops-state-pk-123
+
+    Now all configs will be written to /home/ubuntu/.kube/config
+
+    check the config - the certificates, the admin/passwords, the server domain
+
+    kubectl gte node - will list all the nodes with subdomains 
+
+
+    Now run programme/containers on the clusters:
+
+    Example :
+   - kubectl run hello-minikube --image=gcr.io/google_containers/echoserver:1.4 --port=8080
+   - kubectl expose deployment hello-minikube --type=NodePort
+   - kubectl get service - (open the exposed port in security groups of aws for the new domain)
+
+   verify the ec2 instances, route53 services,
+
+   Now access the applicaton by using the exposed ports of domain name
+
+   delete the cluster:
+
+   kops delete cluster --name pkthegnulinuxguy.com --state=s3://kops-state-pk-123 --> will delete all the resources IAM, cluster, instances, s3, volume, subnet, security grp everything
+
+   - 
+   
+
+Kubernetes Basics
+=================
+
+kubelet - Responsible for connecting the node with master node in cluster
+kubeproxy - feed ports to iptables and change the rules 
+
+Scaling
+=======
+
+If application is stateless we can horizontally scale it
+
+  Stateless - Application doesnot have a state, it doesnot write any local files/local 
+
+  Stateful - All traditional databases (mysql, postgress) are stateful, they have db files that cant split over multiple instances
+
+
+Most webapplications are stateless
+
+  State management needs to be done outside the container(can be stored in memcache or any to store the session)
+
+  Any files that need to be saved cant be saved locally
+
+  nodejs app is stateless that we are going to use
+
+  12factor.net - stateless arch
+
+  Using volumes to run stateful apps
+
+  Stateful apps cant be horizontally scale, but we can run them in a single container and vertically scale (allocating more CPU , mem, disk)
+
+  Replication COntroller
+  ======================
+
+  Scaling can be done using Replication COntroller
+
+  Replication controller ensures a specified number of pod replicas wil run at all time
+
+  Pods created with replica controller will automatically be replaced if they fail, get deleted or are terminated
+
+  Its recomended to to use replication controller even if we just want to make sure 1 pod is always running, even after reboots
+ 
+   - run the replication controller with just 1 replica
+   - Make sure that pod is always running
+
+
+     repcontroller-helloworld.yml
+  ==================
+
+apiVersion: v1
+kind: ReplicationCOntroller
+ metadata:
+  name: nodejsapp.example.com
+ spec:
+  replicas: 2
+  selector:
+    app: helloworld
+template:
+ metadata:
+   labels:
+    app: helloworld
+ spec
+  containers:
+  - name: nodejsapp
+    image: priyadku/nodejsapp
+    ports:
+    - name: nodejs-port
+      containerPort: 3000
+
+      Then use it
+      :
+kubectl create -f repcontroller-helloworld.yml - will create the pod
+
+kubectl get pods
+
+kubectl describe pod <podname>      
+
+kubectl get pods - Multiple pods running
+
+kubectl delete pod <podname>, new pod will be created
+
+scaling 1st method
+==========
+
+kubectl scale --replicas=4 -f repcontroller-helloworld.yml
+
+
+kubectl get pods
+
+kubectl get rc
+
+scaling 2nd method
+===========
+
+kubectl scale --replicas=1 rc/controllername
+
+kubectl get pods
+
+Only horizontally scaling, stateful apps cane be scaled this way
+
+
+Deployments:
+============
+
+Replica Set - next generation Replication controller
+
+It supports a new selector that can do selection based on filtering according to a set of values
+
+e.g. - environment either dev or qa
+     - not only based on equality , like replication controller
+        e.g  - "environment" == "dev"
+
+
+The replica set, rather than the Replication Controller is used by the Deployment object
+
+Deployments declaration in kubernetes allows to do app deployments and updates
+
+When using deployment object, we define the state of the application
+
+kubernetes then will make sure the clusters matches the desired state
+
+Just using the replication controller/ reploication set to deploy apps
+
+ - Deployment object is easier to use abd gives more possibilities
+ - 
+
+ Using Deployment object
+ =======================
+
+ CReate deployment (Deployment of an app)
+
+  Update an deployment (deploynew version of app)
+
+  Do rolling updates(zero downtime deployments)
+
+  Rollback to previous versions
+
+  Pause/Resume a deployment
+
+
+     deployment-helloworld.yml
+  ==================
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+ metadata:
+  name: nodejsapp.example.com
+ spec:
+  replicas: 3
+  selector:
+    app: helloworld
+template:
+ metadata:
+   labels:
+    app: helloworld
+ spec
+  containers:
+  - name: nodejsapp
+    image: priyadku/nodejsapp
+    ports:
+    - name: nodejs-port
+      containerPort: 3000
+
+
+Commands:
+=========
+
+kubectl get deployments
+kubectl get rs
+kubectl get pods --show-labels
+kubectl rollout status deployment/helloworld-deployment
+kubectl set image deployment/helloworld-deployment nodejsapp=nodejsapp:2
+
+kubectl create -f deployment-helloworld.yml
+
+kubectl get deployments - Desired state and current state of 3 replicas
+
+kubectl get rs
+
+kubectl get pods --show-labels
+
+kubectl rollout status deployment/helloworld-deployment
+
+kubectl expose deployment helloworld-deployment --type=NodePort   (will create a service)
+
+kubectl get service
+
+kubectl describe service service-name
+
+minikube service helloworld-deployment --url
+
+curl url
+
+kubectl set image deployment/helloworld-deployment k8s-demo=wardviaene/k8s-demo:2 (update image with new label)
+
+kubectl rollout status deployment/helloworld-deployment (status rollout new image)
+
+curl url (To see the new images)
+
+kubectl get pods (to see the status of old and new pods)
+
+kubectl rollout history deployment/helloworld-deployment (multiple revesions)
+
+kubectl rollout undo deployment/helloworld-deployment (rollback app)
+
+kubectl rollout status deployment/helloworld-deployment (rollout new image status)
+
+kubectl get pods 
+
+curl url 
+
+kubectl rollout history deployment/helloworld-deployment (Default 2 revisions)
+
+modify the number of revisions (kubectl rollout history deployment/helloworld-deployment)
+
+kubectl edit deployment/helloworld-deployment (Under replicas add revisionHistoryLimit: 100)
+
+kubectl set image deployment/helloworld-deployment k8s-demo=wardviaene/k8s-demo:2
+
+kubectl rollout history deployment/helloworld-deployment
+
+kubectl rollout undo deployment/helloworld-deployment --to-revisio=3 (Undo to a new revisions)
+
+curl url
+
+
+services:
+==========
+
+kubectl get svc
+
+
+
+Labels
+======
+
+key/value pairs tagged to an object
+
+Like tags
+
+not unique
+
+multiple labels can be attached to an object
+
+Label selectors
+
+e.g environment label : development or qa
+
+e.g kubectl label nodes node1 hardware=high-spec
+
+e.g kubectl label nodes node1 hardware=low-spec
+
+
+kubectl get nodes
+
+kubectl get nodes --show-labels
+
+kubectl create -f deployments/helloworld-nodeselector.yml
+
+add label:
+
+kubectl label nodes minikube hardware=high-spec
+
+kubectl create -f deployments/helloworld-nodeselector.yml
+
+kubectl get nodes
+
+kubectl describe node nodename
+
+Namespaces
+===========
+
+Devide a single physical cluster into multiple virtual cluster.
+Each namespace corresponds to one virtual cluster and it help intercommunication of pods.
+
+Three name spaces are there predefined.
+
+a. default : if nothing is defined : This is a default namespace for objects bed no other namespace is explicitly specified by the administrator or the user.
+b. kube-system : 
+c. kube-public : This is a deliberately be accessible and automatically readable namespace on users even those who are not authenticated can make use of resources which are in the public namespace. This is mostly used for usage for sources that need to be made available to all the cluster name spaces into one of these.
+
+
+Objects only need to have unique names within a namespace.
+You can reuse object names across names spaces in future versions of communities.
+The idea is that objects in the same namespace will all have the same access control policies by default.
+
+Create a namespace:
+==================
+
+apiVersion: v1
+kind: Namespce
+metadata
+   name: priyadku
+   
+kubectl create –f priyadku.yml 
+kubectl get namespace 
+kubectl get namespace priyadku 
+kubectl describe namespace priyadku
+kubectl delete namespace priyadku
+   
+Use the same namespace in pod
+=============================
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+ metadata:
+  name: nodejsapp.example.com
+  namespace: priyadku
+ spec:
+  replicas: 3
+  selector:
+    app: helloworld
+template:
+ metadata:
+   labels:
+    app: helloworld
+ spec
+  containers:
+  - name: nodejsapp
+    image: priyadku/nodejsapp
+    ports:
+    - name: nodejs-port
+      containerPort: 3000
+
+
+VOlumes:
+========
+
+allow to store data outside the container
+
+when container stops data on container is lost
+
+external service like a database , caching server (My SQL, AWS S3)
+
+persistent volumes
+
+
+If one node stops working the pod can be rescheduled on another node , and the volume can be attached to the new node.
+
+We need to create volume:
+
+aws ec2 create-volume --size 10 --region eu-west-1 --availability-zone eu-west-1a --volume-type gp2
+
+
+-f storage.yml
+
+-f pv-claim.yml
+
+-f wordpress-secrets.yyml
+
+-f wordpress-db.yml
+
+-f wordpress-db-service.yml
+
+kubectl get pvc
+
+kubectl get pod
+
+kubectl describe pod <abovepod>
+
+-f wordpress-web.yml
+
+-f wordpress-web-service.yml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
